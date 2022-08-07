@@ -1,20 +1,24 @@
-ARG         base=alpine
+FROM        alpine:3.15 AS rejson
 
-###
-
-FROM        ${base} as build
-
-ARG         version=
-ARG         repo=
-
+ARG         REDIS_JSON_VERSION=2.2.0
+WORKDIR     /usr/lib/
 RUN         apk add --no-cache --virtual .build-deps \
-                build-base && \
-            wget -O - https://github.com/${repo}/archive/refs/tags/v${version}.tar.gz | tar xz
+                curl \
+                rust \
+                cargo \
+                clang-libs \
+                build-base
+RUN         curl -sfLO https://github.com/RedisJSON/RedisJSON/archive/refs/tags/v${REDIS_JSON_VERSION}.tar.gz && \
+            tar -xvzf v${REDIS_JSON_VERSION}.tar.gz && \
+            mv RedisJSON-${REDIS_JSON_VERSION} RedisJSON &&\
+            cd  RedisJSON && \
+            cargo build --release  && \
+            apk del .build-deps
 
-###
 
-FROM        ${base}
+FROM        redis:7.0-alpine
+RUN         apk add build-base
+RUN         mkdir -p "/usr/lib/redis/modules"
+COPY        --from=rejson    /usr/lib/RedisJSON/target/release/librejson.so   "/usr/lib/redis/modules/rejson.so"
+RUN         chown -R redis:redis /usr/lib/redis/modules
 
-COPY        --from=build /usr/local/bin /usr/local/bin
-COPY        --from=build /usr/local/include /usr/local/include
-COPY        --from=build /usr/local/lib /usr/local/lib
