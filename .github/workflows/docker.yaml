@@ -14,7 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - "7.0.0"
+        - "7.0.4"
+        include:
+        - version: "7.0.4"
+          latest: true
 
     steps:
     - name: Checkout
